@@ -6,6 +6,7 @@
     "agents":      { "title": "Субагенты с моделью и effort",       "default": true,  "desc": "scout, skeleton, builder, architect, security. Генерируются из core/models.json." },
     "hook-state":  { "title": "Хук: подгрузка состояния",           "default": true,  "desc": "На старте, resume, clear и после компакта выводит docs/TASK.md и статус комбайна." },
     "hook-guard":  { "title": "Хук: блокировка опасных команд",     "default": true,  "desc": "Блокирует заведомо разрушительные команды в классических формах (идея из scotthavird/claude-code-template). Не песочница." },
-    "hook-remind": { "title": "Хук: напоминание правил в каждом запросе", "default": false, "desc": "Дублирует CLAUDE.md и тратит токены на каждый ход, поэтому по умолчанию выключен. Включить: --with hook-remind." }
+    "hook-remind": { "title": "Хук: напоминание правил в каждом запросе", "default": false, "desc": "Дублирует CLAUDE.md и тратит токены на каждый ход, поэтому по умолчанию выключен. Включить: --with hook-remind." },
+    "hook-compact": { "title": "Хук: сохранение сводки сжатия", "default": true, "desc": "После сжатия контекста (ручного и автоматического) сохраняет сводку в .claude/combine/compactions/ (не в git, хранится 10 последних); после сжатия хук состояния напоминает, где она. Порог автосжатия не меняет." }
   }
 }

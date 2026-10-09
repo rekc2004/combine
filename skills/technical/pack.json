@@ -3,14 +3,22 @@
   "title": "Технические проекты",
   "skills": {
     "verify-done": {
-      "cost": "дёшево",
+      "cost": "cheap",
       "default": true,
-      "files": ["SKILL.md"]
+      "files": ["SKILL.md"],
+      "about_ru": "Перед тем как сказать «готово» про код: собрать, запустить тесты, показать фактический результат."
     },
     "simple-and-surgical": {
-      "cost": "дёшево",
+      "cost": "cheap",
       "default": true,
-      "files": ["SKILL.md"]
+      "files": ["SKILL.md"],
+      "about_ru": "Писать минимум кода под задачу, менять только нужное, заранее задавать проверяемые критерии успеха."
+    },
+    "compaction": {
+      "cost": "cheap",
+      "default": true,
+      "files": ["SKILL.md"],
+      "about_ru": "Дирижёр следит за заполнением контекста: сохраняет состояние в файлы до сжатия и читает сохранённую сводку после."
     }
   },
   "recommends": [

@@ -26,7 +26,8 @@ NAME_RE = re.compile(r"^[a-z][a-z0-9-]*$")
 STATE_FILE, LOCK_FILE = ".combine.json", ".combine.lock"
 SKILL_SUFFIXES = {".md", ".txt"}  # из наборов копируются только текстовые файлы
 DEFAULT_PACKS = ["technical", "review"]
-HOOK_MODULES = {"hook-state": "state.py", "hook-remind": "remind.py", "hook-guard": "guard.py"}
+HOOK_MODULES = {"hook-state": "state.py", "hook-remind": "remind.py", "hook-guard": "guard.py",
+                "hook-compact": "compact.py"}
 
 
 def die(msg):
@@ -88,9 +89,10 @@ def discover_skills():
 
 # ---------- вспомогательное ----------
 
-def hook_cmd(script):
+def hook_cmd(script, user=False):
     p = f'{HOOK_MARK}{script}'
-    return ("sh -c 'p=\"$CLAUDE_PROJECT_DIR/" + p + "\"; "
+    base = "$HOME" if user else "$CLAUDE_PROJECT_DIR"
+    return ("sh -c 'p=\"" + base + "/" + p + "\"; "
             "if command -v python3 >/dev/null 2>&1; then exec python3 \"$p\"; else exec python \"$p\"; fi'")
 
 
@@ -106,14 +108,14 @@ def source_version():
             "dirty": bool(git("status", "--porcelain"))}
 
 
-def agent_file(name, spec, models, core_on):
+def agent_file(name, spec, models, core_on, rules_path=".claude/combine/CORE.md"):
     if not NAME_RE.match(name):
         die(f"Недопустимое имя агента: {name!r}")
     model = models[spec["model"]]["id"]
-    rules = "Следуй .claude/combine/CORE.md. " if core_on else ""
-    body = (f"Ты агент комбайна `combine-{name}`. {rules}Работай в рамках роли: {spec['description']}\n"
-            "Если задача выходит за рамки роли, остановись и верни главной сессии короткое объяснение, "
-            "какой агент нужен. Не выдавай непроверенное за проверенное.\n")
+    rules = f"Follow {rules_path}. " if core_on else ""
+    body = (f"You are Combine agent `combine-{name}`. {rules}Stay within your role: {spec['description']}\n"
+            "If the task is outside your role, stop and return a short explanation to the main session "
+            "of which agent is needed. Never present unverified as verified.\n")
     return ("---\n"
             f"name: combine-{name}\n"
             f"description: {json.dumps(spec['description'], ensure_ascii=False)}\n"
@@ -130,11 +132,13 @@ def claude_block(enabled, has_skills):
             continue
         if "pipeline.md" in line and "pipeline" not in enabled:
             continue
-        if ("TASK.md" in line or "Состояние задачи" in line) and "pipeline" not in enabled:
+        if "TASK.md" in line and "pipeline" not in enabled:
             continue
         if "combine-scout" in line and "agents" not in enabled:
             continue
         if "combine-*" in line and not has_skills:
+            continue
+        if "On context compaction" in line and "hook-compact" not in enabled:
             continue
         keep.append(line)
     return "\n".join(keep).strip()
@@ -193,7 +197,7 @@ def merge_claude_md(t, enabled, has_skills):
         t.write("CLAUDE.md", new.replace("\n", nl) if nl == "\r\n" else new)
 
 
-def merge_settings(t, enabled):
+def merge_settings(t, enabled, user=False):
     raw = t.read(".claude/settings.json")
     try:
         data = json.loads(raw) if raw is not None else {}
@@ -218,10 +222,11 @@ def merge_settings(t, enabled):
             del hooks[event]
     wanted = [("hook-state", "SessionStart", "startup|resume|compact|clear", "state.py"),
               ("hook-remind", "UserPromptSubmit", None, "remind.py"),
-              ("hook-guard", "PreToolUse", "Bash|PowerShell", "guard.py")]
+              ("hook-guard", "PreToolUse", "Bash|PowerShell", "guard.py"),
+              ("hook-compact", "PostCompact", None, "compact.py")]
     for module, event, matcher, script in wanted:
         if module in enabled:
-            group = {"hooks": [{"type": "command", "command": hook_cmd(script)}]}
+            group = {"hooks": [{"type": "command", "command": hook_cmd(script, user)}]}
             if matcher:
                 group["matcher"] = matcher
             hooks.setdefault(event, []).append(group)
@@ -231,10 +236,25 @@ def merge_settings(t, enabled):
         t.write(".claude/settings.json", json.dumps(data, indent=2, ensure_ascii=False) + "\n")
 
 
-def do_check(t):
-    lock = t.path(LOCK_FILE)
+def do_status(t, state_rel, lock_rel):
+    state = t.path(state_rel)
+    if not state.exists():
+        print("Комбайн не установлен в этой папке.")
+        return 1
+    s = load_json(state)
+    v = s.get("version", {})
+    print(f"Установлен: {v.get('describe', 'unknown')}{' (были незакоммиченные правки)' if v.get('dirty') else ''}")
+    print(f"Источник: {s.get('source', 'неизвестен')}")
+    print(f"Наборы: {', '.join(s.get('packs', [])) or 'нет'}; включено сверх default: {', '.join(s.get('with', [])) or 'ничего'}; отключено: {', '.join(s.get('disabled', [])) or 'ничего'}")
+    n = len(load_json(t.path(lock_rel)).get("files", {})) if t.path(lock_rel).exists() else 0
+    print(f"Файлов под учётом: {n}")
+    return 0
+
+
+def do_check(t, lock_rel=LOCK_FILE):
+    lock = t.path(lock_rel)
     if not lock.exists():
-        die("Нет .combine.lock: комбайн сюда не подключён.")
+        die(f"Нет {lock_rel}: комбайн сюда не подключён.")
     bad = 0
     for rel, digest in load_json(lock).get("files", {}).items():
         p = t.path(rel)
@@ -259,22 +279,31 @@ def main():
     ap.add_argument("--without", default=None, help="модули или ключи скиллов, которые не ставить")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--check", action="store_true", help="сверить файлы проекта с .combine.lock и выйти")
+    ap.add_argument("--user", action="store_true",
+                    help="глобальная установка в ~/.claude: Комбайн работает во всех проектах, в проекты ничего не копируется")
+    ap.add_argument("--home", default=None, help="с --user: вместо домашней папки (для проверки)")
+    ap.add_argument("--uninstall", action="store_true", help="убрать всё, что Комбайн установил (в проект или с --user)")
+    ap.add_argument("--status", action="store_true", help="показать, что установлено, и выйти")
     args = ap.parse_args()
 
-    root = Path(args.target).resolve()
+    user = args.user
+    root = (Path(args.home) if args.home else Path.home()).resolve() if user else Path(args.target).resolve()
+    state_rel, lock_rel = (".claude/combine/state.json", ".claude/combine/lock.json") if user else (STATE_FILE, LOCK_FILE)
     if not root.is_dir():
         die(f"Нет такой папки: {root}")
     if root == SRC:
         die("Целевой проект не должен быть самим репозиторием комбайна.")
     t = Target(root, args.dry_run)
+    if args.status:
+        return do_status(t, state_rel, lock_rel)
     if args.check:
-        return do_check(t)
+        return do_check(t, lock_rel)
 
     mods = load_json(CORE / "modules.json")["modules"]
     models = load_json(CORE / "models.json")
     skills = discover_skills()
 
-    prev_state = load_json(t.path(STATE_FILE)) if t.path(STATE_FILE).exists() else {}
+    prev_state = load_json(t.path(state_rel)) if t.path(state_rel).exists() else {}
     csv = lambda s: [x.strip() for x in s.split(",") if x.strip()]
     packs = csv(args.packs) if args.packs is not None else prev_state.get("packs", DEFAULT_PACKS)
     with_ = csv(args.with_) if args.with_ is not None else prev_state.get("with", [])
@@ -293,6 +322,8 @@ def main():
 
     enabled = {m for m, v in mods.items() if v["default"]} - set(disabled)
     enabled |= {m for m in with_ if m in mods}
+    if args.uninstall:
+        enabled, packs, with_ = set(), [], []
 
     # желаемое состояние отслеживаемых файлов: путь -> текст
     want = {}
@@ -302,8 +333,11 @@ def main():
     if "pipeline" in enabled:
         want[cm + "pipeline.md"] = read_utf8(CORE / "pipeline.md")
     if "agents" in enabled:
+        rules_path = "~/.claude/combine/CORE.md" if user else ".claude/combine/CORE.md"
         for name, spec in models["agents"].items():
-            want[f".claude/agents/combine-{name}.md"] = agent_file(name, spec, models["models"], "core" in enabled)
+            want[f".claude/agents/combine-{name}.md"] = agent_file(name, spec, models["models"], "core" in enabled, rules_path)
+    if user and not args.uninstall:
+        want[".claude/skills/combine/SKILL.md"] = read_utf8(CORE / "user" / "combine" / "SKILL.md")
     for module, script in HOOK_MODULES.items():
         if module in enabled:
             want[f"{cm}hooks/{script}"] = read_utf8(CORE / "hooks" / script)
@@ -316,7 +350,7 @@ def main():
             for f in s["files"]:
                 want[f".claude/skills/combine-{s['pack']}-{s['name']}/{f}"] = read_utf8(s["base"] / f)
 
-    prev_lock = load_json(t.path(LOCK_FILE)).get("files", {}) if t.path(LOCK_FILE).exists() else {}
+    prev_lock = load_json(t.path(lock_rel)).get("files", {}) if t.path(lock_rel).exists() else {}
     conflicts = [rel for rel, text in want.items()
                  if t.path(rel).exists() and rel not in prev_lock and t.path(rel).read_bytes() != text.encode("utf-8")]
     if conflicts:
@@ -327,17 +361,24 @@ def main():
     for rel in prev_lock:
         if rel not in want:
             t.remove(rel)
-    if "pipeline" in enabled and not t.path("docs/TASK.md").exists():
+    if not user and "pipeline" in enabled and not t.path("docs/TASK.md").exists():
         t.write("docs/TASK.md", read_utf8(CORE / "templates" / "TASK.md"))
-    merge_settings(t, enabled)
-    merge_claude_md(t, enabled, bool(chosen))
-    t.write(STATE_FILE, json.dumps({"version": source_version(), "packs": packs, "with": with_,
-                                    "disabled": sorted(disabled)}, indent=2, ensure_ascii=False) + "\n")
-    lock = {"files": {rel: sha(text.encode("utf-8")) for rel, text in sorted(want.items())}}
-    t.write(LOCK_FILE, json.dumps(lock, indent=2, ensure_ascii=False) + "\n")
+    merge_settings(t, enabled, user)
+    if not user:  # глобальная установка CLAUDE.md проектов не трогает: правила подаёт хук состояния
+        merge_claude_md(t, enabled, bool(chosen))
+    if args.uninstall:
+        t.remove(state_rel)
+        t.remove(lock_rel)
+    else:
+        state = {"version": source_version(), "packs": packs, "with": with_, "disabled": sorted(disabled)}
+        if user:
+            state["source"] = str(SRC)
+        t.write(state_rel, json.dumps(state, indent=2, ensure_ascii=False) + "\n")
+        lock = {"files": {rel: sha(text.encode("utf-8")) for rel, text in sorted(want.items())}}
+        t.write(lock_rel, json.dumps(lock, indent=2, ensure_ascii=False) + "\n")
 
     v = source_version()
-    print(("[dry-run] " if args.dry_run else "") + f"Комбайн {v['describe']}{' (есть незакоммиченные правки!)' if v['dirty'] else ''} -> {root}")
+    print(("[dry-run] " if args.dry_run else "") + ("Удаление: " if args.uninstall else "") + f"Комбайн {v['describe']}{' (есть незакоммиченные правки!)' if v['dirty'] else ''} -> {root}{' (глобально)' if user else ''}")
     print("Модули:", ", ".join(sorted(enabled)) or "нет")
     print("Скиллы:", ", ".join(chosen) or "нет", "| наборы:", ", ".join(packs) or "нет")
     print("Отключено:", ", ".join(sorted(disabled)) or "ничего")

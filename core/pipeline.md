@@ -1,26 +1,25 @@
-# Конвейер комбайна
+# Combine pipeline
+Task state lives in `docs/TASK.md`, not in chat context. New session/compaction loads it automatically (hook `hook-state`).
 
-Состояние задачи живёт в `docs/TASK.md`, а не в контексте чата. Новая сессия и компакт подхватывают его автоматически (хук `hook-state`).
+## Stages
+1. **Dialogue.** Clarify task (CORE rule 1). Result: goal and hard constraints in TASK.md. No code.
+2. **Plan.** `combine-architect` (or main session if small) splits work into stages. Per stage: goal, done-criterion, model and effort with justification from `core/models.json`. Strike unnecessary, mark done.
+3. **Skeleton.** `combine-skeleton`: structure, stubs, configs, build. **Acceptance:** builds, basic tests pass, structure matches plan. Cheap models may report unchecked, so main session accepts: runs build and tests itself. No further until accepted.
+4. **Build-up.** `combine-builder` implements on the skeleton by stage. Critical parts (network, crypto, untrusted input parsing): `combine-architect` leads the stage, not builder.
+5. **Verification.** Tests, build. `combine-security` for anything security-related. Result: report of what was checked and what was NOT.
+6. **Closing.** Update TASK.md: done, remaining, known limits.
 
-## Этапы
-1. **Диалог.** Уточнить задачу (см. CORE.md, п.1). Результат: короткое описание цели и жёстких ограничений в TASK.md. Без кода.
-2. **План.** `combine-architect` (или сама главная сессия, если задача мала) режет работу на этапы. Для каждого указывает: цель, критерий готовности, модель и effort с обоснованием по профилям из `core/models.json`. Лишнее вычёркивается, сделанное помечается.
-3. **Скелет.** `combine-skeleton`: структура, заглушки, конфиги, сборка. **Критерий принятия:** собирается, базовые тесты проходят, структура совпадает с планом. Дешёвая модель может отчитаться без проверки, поэтому приёмку делает главная сессия: сама запускает сборку и тесты. Пока скелет не принят, дальше не идти.
-4. **Наращивание.** `combine-builder` реализует поверх скелета по этапам. Для критичных кусков (сеть, крипто, разбор недоверенного ввода) этап ведёт `combine-architect`, а не builder.
-5. **Проверка.** Тесты и сборка. `combine-security` для всего, что касается безопасности. Результат: отчёт, что проверено и что НЕ проверено.
-6. **Закрытие.** Обновить TASK.md: сделано, осталось, известные ограничения.
+## Choosing a model
+Orchestrator decides by class of work, not a stage->model table:
+- Search, reading, running commands, formatting: `scout` (cheap, low effort), always.
+- New logic with clear spec: `builder`.
+- Uncertainty, protocol design, threat model, contested trade-offs: `architect`.
+- Security: `security`, plus recheck of critical parts by the strongest model.
+- Raise effort first, then model (Anthropic: often the best lever). Cheap model failed a stage twice: raise effort or model, no third retry.
+- Strong model doing routine work: stop, hand to `scout`/`builder`.
+- A chain of dependent steps: one model, cheaper and more reliable. Split between agents only independent parts.
+- Tell cheap agents explicitly what to check and how to report: they do not ask for help or verification.
+- Expensive skills (`[expensive]` in description) only on user request.
 
-## Выбор модели
-Решает оркестратор по классу работы, а не по таблице «этап → модель». Правила взвешивания:
-- Поиск, чтение, прогон команд, форматирование: `scout` (дешёвая модель, низкий effort), всегда.
-- Новая логика с чёткой спецификацией: `builder`.
-- Неопределённость, дизайн протокола, модель угроз, спорные компромиссы: `architect`.
-- Безопасность: `security`, плюс повторная проверка критичного сильнейшей моделью.
-- Сначала подними effort, потом модель: по рекомендации Anthropic это часто лучший рычаг. Если дешёвая модель дважды не справилась с этапом, поднять effort или модель, а не повторять третий раз.
-- Если сильная модель делает рутину, остановиться и передать `scout`/`builder`.
-- Одна цепочка зависимых шагов дешевле и надёжнее у одной модели, чем у нескольких. Делить на агентов имеет смысл независимые части.
-- Дешёвым агентам в задании явно писать, что проверить и как отчитаться: сами они за помощью или проверкой не обращаются.
-- Дорогие скиллы (в описании `[дорого]`) вызывать только по просьбе пользователя.
-
-## Формат docs/TASK.md
-См. `core/templates/TASK.md`. Правило ведения: каждый этап одной строкой с чекбоксом, моделью/effort и коротким итогом. Не расписывать подробности: детали идут в коммиты и документы проекта.
+## docs/TASK.md format
+See `core/templates/TASK.md`. One line per stage: checkbox, model/effort, short result. No elaboration: details go to commits and project docs.

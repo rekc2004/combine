@@ -3,9 +3,10 @@
   "title": "Ревью",
   "skills": {
     "quick": {
-      "cost": "дёшево",
+      "cost": "cheap",
       "default": true,
-      "files": ["SKILL.md"]
+      "files": ["SKILL.md"],
+      "about_ru": "Быстрое ревью своих изменений по короткому чек-листу перед коммитом."
     }
   }
 }

@@ -24,14 +24,14 @@
 
   "agents": {
     "scout":     { "model": "haiku",  "effort": "low",    "tools": "Read, Grep, Glob, Bash",
-                   "description": "Поиск и чтение по репозиторию, сбор фактов, запуск проверочных команд. Только чтение, ничего не правит. Использовать вместо сильных моделей для любого поиска." },
+                   "description": "Repo search and reading, fact gathering, running check commands. Read-only, edits nothing. Use instead of strong models for any search." },
     "skeleton":  { "model": "haiku",  "effort": "medium", "tools": "Read, Grep, Glob, Edit, Write, Bash",
-                   "description": "Строит каркас по готовому плану: структура каталогов, заглушки, конфиги, сборка. Не пишет сложную логику. Обязательно запускает сборку и базовые тесты и докладывает фактический результат, а не предположение." },
+                   "description": "Builds the skeleton from a ready plan: directory structure, stubs, configs, build. No complex logic. Must run the build and basic tests and report the actual result, not an assumption." },
     "builder":   { "model": "sonnet", "effort": "medium", "tools": "Read, Grep, Glob, Edit, Write, Bash",
-                   "description": "Основная реализация поверх принятого скелета, тесты, рефакторинг. Не принимает архитектурных решений без плана от architect." },
+                   "description": "Main implementation on top of the accepted skeleton, tests, refactoring. Makes no architectural decisions without a plan from architect." },
     "architect": { "model": "opus",   "effort": "high",   "tools": "Read, Grep, Glob, Write",
-                   "description": "Проектирование: архитектура, протоколы, модель угроз, декомпозиция на этапы с выбором модели. Не занимается поиском и рутиной." },
+                   "description": "Design: architecture, protocols, threat model, decomposition into stages with model choice. No search or routine work." },
     "security":  { "model": "opus",   "effort": "high",   "tools": "Read, Grep, Glob, Bash",
-                   "description": "Ревью безопасности: ввод от недоверенных источников, криптография, пути файлов, права, зависимости. Только чтение. Отчёт с конкретными местами в коде." }
+                   "description": "Security review: untrusted input, cryptography, file paths, permissions, dependencies. Read-only. Report with concrete places in the code." }
   }
 }

@@ -1,29 +1,29 @@
 ---
 name: combine-technical-simple-and-surgical
-description: "[дёшево] Писать минимум кода под задачу, менять только нужное, заранее задавать проверяемые критерии успеха."
+description: "[cheap] Write minimal code for the task, change only what is needed, set verifiable success criteria first."
 ---
 
-# Просто, точечно, с проверкой
+# Simple, surgical, verified
 
-Использовать, когда пишешь, правишь или рефакторишь код. Идеи общие для многих разборов типичных ошибок LLM при программировании (в том числе наблюдений Andrej Karpathy); текст написан заново.
+Use when writing, editing or refactoring code. Ideas are common to many analyses of typical LLM coding mistakes (including observations by Andrej Karpathy); the text is written anew.
 
-## 1. Простота
-- Минимум кода, который решает задачу. Ничего впрок: ни функций, о которых не просили, ни абстракций для одноразового кода, ни настроек «на будущее», ни обработки случаев, которые невозможны.
-- Написал 200 строк там, где хватило бы 50: перепиши.
-- Вопрос себе: сочтёт ли опытный инженер это перегруженным? Если да, упрости.
+## 1. Simplicity
+- Minimum code that solves the task. Nothing in reserve: no unrequested functions, no abstractions for one-off code, no "future" settings, no handling of impossible cases.
+- Wrote 200 lines where 50 would do: rewrite.
+- Ask yourself: would a senior engineer call this overbuilt? If yes, simplify.
 
-## 2. Точечные изменения
-- Правишь чужой код: не «улучшай» соседнее, не переформатируй, не рефактори то, что не сломано, держи существующий стиль, даже если сделал бы иначе.
-- Постороннюю мёртвую штуку заметил: упомяни, не удаляй.
-- Что осиротело из-за ТВОИХ правок (импорты, переменные, функции): убери.
-- Проверка: каждая изменённая строка выводится из просьбы пользователя.
+## 2. Surgical changes
+- Editing someone else's code: do not "improve" neighbours, reformat, or refactor what is not broken; keep the existing style even if you would do it differently.
+- Notice unrelated dead code: mention it, do not delete it.
+- Anything orphaned by YOUR edits (imports, variables, functions): remove it.
+- Test: every changed line traces to the user's request.
 
-## 3. Цель с проверкой
-Превращай задачу в проверяемый критерий и повторяй, пока он не выполнен:
-- «Добавь валидацию» → тесты на плохие входы, затем чтобы проходили.
-- «Исправь баг» → тест, воспроизводящий его, затем чтобы проходил.
-- «Рефакторинг» → тесты проходят до и после.
-Для многошаговой задачи коротко распиши: шаг → чем проверю. Слабый критерий («чтобы работало») заставляет переспрашивать, сильный позволяет довести дело самому.
+## 3. Goal with a check
+Turn the task into a verifiable criterion and repeat until it holds:
+- "Add validation" -> tests for bad inputs, then make them pass.
+- "Fix the bug" -> a test reproducing it, then make it pass.
+- "Refactor" -> tests pass before and after.
+For a multi-step task, write briefly: step -> how I will verify. A weak criterion ("make it work") forces questions back; a strong one lets you finish alone.
 
-## 4. Допущения
-Неочевидное допущение назови вслух. Если толкований несколько, не выбирай молча: перечисли и спроси (правило из CORE).
+## 4. Assumptions
+State a non-obvious assumption aloud. Several readings possible: do not pick silently, list them and ask (CORE rule).

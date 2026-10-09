@@ -11,7 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import sync  # noqa: E402
 
-COSTS = {"дёшево", "средне", "дорого"}
+COSTS = {"cheap", "medium", "expensive"}
 MARK_BEGIN, MARK_END = "<!-- skills-table:begin -->", "<!-- skills-table:end -->"
 SUSPICIOUS = re.compile(r"(?i)ignore (all |any )?(previous|prior) instructions|игнорируй (все )?предыдущие инструкции|curl[^\n]*\|\s*(ba)?sh")
 
@@ -40,7 +40,7 @@ def main():
         spec = s["spec"]
         if s["cost"] not in COSTS:
             errors.append(f"{key}: cost должен быть одним из {sorted(COSTS)}")
-        if s["cost"] == "дорого" and s["default"]:
+        if s["cost"] == "expensive" and s["default"]:
             errors.append(f"{key}: дорогой скилл не может быть default:true")
         if "source" in spec and not (spec["source"].get("license") and spec["source"].get("url")):
             errors.append(f"{key}: для чужого скилла обязательны source.url и source.license")
@@ -59,7 +59,7 @@ def main():
                 errors.append(f"{key}/{f}: подозрительная фраза (инъекция или запуск скачанного), проверьте вручную")
         src = spec.get("source")
         rows.append(f"| `{key}` | {s['cost']} | {'да' if s['default'] else 'нет, `--with ' + key + '`'} | "
-                    f"{desc.split('] ', 1)[-1]} | {(src or {}).get('license', 'свой')} |")
+                    f"{spec.get('about_ru') or desc.split('] ', 1)[-1]} | {(src or {}).get('license', 'свой')} |")
     for pack_dir in sorted(p for p in sync.SKILLS.iterdir() if p.is_dir()):
         manifest = pack_dir / "pack.json"
         if manifest.exists():

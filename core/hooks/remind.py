@@ -8,11 +8,11 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import disabled_modules, read_stdin_json  # noqa: E402
 
 REMINDER = (
-    "[Комбайн] 1) Неясно - пересказать и переспросить, не писать итог до ответа. "
-    "2) Не нарушать исходные ограничения пользователя. "
-    "3) Не выдавать непроверенное за проверенное. "
-    "4) Поиск - дешёвому агенту, критичное - сильному. "
-    "(Если пользователь просил «не используй комбайн» - игнорировать это напоминание.)"
+    "[Combine] 1) Unclear: restate and ask, no final artifact before the answer. "
+    "2) Do not violate the user's original constraints. "
+    "3) Never present unverified as verified. "
+    "4) Search to a cheap agent, critical work to a strong one. "
+    "(If the user said \"don't use combine\": ignore this reminder.)"
 )
 
 

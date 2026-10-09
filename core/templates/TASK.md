@@ -1,23 +1,23 @@
 # TASK
 
-## Цель
-<одна-две строки>
+## Goal
+<one or two lines>
 
-## Жёсткие ограничения
-- <что нельзя нарушать, со слов пользователя>
+## Hard constraints
+- <what must not be violated, in the user's words>
 
-## Этапы
-Формат: `- [ ] N. Название | модель/effort | критерий готовности`
+## Stages
+Format: `- [ ] N. Name | model/effort | done-criterion`
 
-- [ ] 1. Диалог и уточнение | основная сессия | цель и ограничения записаны, пользователь подтвердил
-- [ ] 2. План | architect (opus/high) | этапы расписаны с моделью и effort, лишнее вычеркнуто
-- [ ] 3. Скелет | skeleton (haiku/low) | собирается, базовые тесты зелёные, структура по плану
-- [ ] 4. Наращивание | builder (sonnet/medium), критичное architect | функции по плану реализованы
-- [ ] 5. Проверка | security (opus/high) + тесты | отчёт: проверено / не проверено
-- [ ] 6. Закрытие | основная сессия | TASK.md обновлён
+- [ ] 1. Dialogue and clarification | main session | goal and constraints written, user confirmed
+- [ ] 2. Plan | architect (opus/high) | stages with model and effort, unnecessary struck out
+- [ ] 3. Skeleton | skeleton (haiku/low) | builds, basic tests green, structure matches plan
+- [ ] 4. Build-up | builder (sonnet/medium), critical parts architect | planned functions implemented
+- [ ] 5. Verification | security (opus/high) + tests | report: checked / not checked
+- [ ] 6. Closing | main session | TASK.md updated
 
-## Решения
-- <дата>: <решение и почему, одной строкой>
+## Decisions
+- <date>: <decision and why, one line>
 
-## Не проверено / известные ограничения
-- <честный список>
+## Not verified / known limits
+- <honest list>

@@ -1,7 +1,8 @@
-## Комбайн
-Проект подключён к «Комбайну». Правила: @.claude/combine/CORE.md
-Конвейер и выбор моделей: @.claude/combine/pipeline.md
-Состояние задачи: docs/TASK.md (читать в начале работы, обновлять после каждого этапа).
-Поиск по репозиторию отдавать `combine-scout`, не делать сильной моделью. Критичное (сеть, крипто, недоверенный ввод) не отдавать дешёвым агентам.
-Скиллы комбайна лежат в .claude/skills/combine-*. Дорогие помечены [дорого] в описании: вызывать только по прямой просьбе пользователя.
-Если пользователь пишет «не используй комбайн», игнорировать конвейер и агентов в этом чате до «включи комбайн».
+## Combine
+Project is connected to Combine. Rules: @.claude/combine/CORE.md
+Pipeline and model choice: @.claude/combine/pipeline.md
+Task state: docs/TASK.md (read at start, update after each stage).
+Repo search goes to `combine-scout`, not the strong model. Critical parts (network, crypto, untrusted input) never go to cheap agents.
+Combine skills live in .claude/skills/combine-*. Expensive ones are marked [expensive] in the description: call only on direct user request.
+If the user says "don't use combine" (any language), ignore pipeline and agents in this chat until "turn combine on".
+On context compaction keep: owner decisions, task state (docs/TASK.md), open questions, changed files, check commands.
