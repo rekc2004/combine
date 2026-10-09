@@ -301,6 +301,7 @@ def main():
         want[cm + "CORE.md"] = read_utf8(CORE / "CORE.md")
     if "pipeline" in enabled:
         want[cm + "pipeline.md"] = read_utf8(CORE / "pipeline.md")
+        want[cm + "SPEC.md"] = read_utf8(CORE / "templates" / "SPEC.md")
     if "agents" in enabled:
         for name, spec in models["agents"].items():
             want[f".claude/agents/combine-{name}.md"] = agent_file(name, spec, models["models"], "core" in enabled)
