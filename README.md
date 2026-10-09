@@ -55,6 +55,7 @@ python tools/sync.py --target . --packs technical,review --with review.deep --wi
 | Ключ | Стоимость | Ставится по умолчанию | Что делает | Лицензия |
 |---|---|---|---|---|
 | `review.quick` | дёшево | да | Быстрое ревью своих изменений по короткому чек-листу перед коммитом. | свой |
+| `technical.simple-and-surgical` | дёшево | да | Писать минимум кода под задачу, менять только нужное, заранее задавать проверяемые критерии успеха. | свой |
 | `technical.verify-done` | дёшево | да | Перед тем как сказать «готово» про код: собрать, запустить тесты, показать фактический результат. | свой |
 <!-- skills-table:end -->
 
@@ -85,7 +86,7 @@ python tools/sync.py --target . --packs technical,review --with review.deep --wi
 - [wshobson/agents](https://github.com/wshobson/agents): библиотека агентов с указанием модели в каждом; идея проверять структуру файлов скриптом.
 - [scotthavird/claude-code-template](https://github.com/scotthavird/claude-code-template): идеи хуков (блокировка опасных команд, сохранение состояния до компакта, подгрузка контекста на старте). Код не копировался.
 - Документация и материалы Anthropic: [субагенты](https://code.claude.com/docs/en/sub-agents), [хуки](https://code.claude.com/docs/en/hooks-guide), [облачные окружения](https://code.claude.com/docs/en/cloud-environments), [выбор модели](https://platform.claude.com/docs/en/about-claude/models/choosing-a-model).
-- Скилл `karpathy-guidelines` (принципы Andrej Karpathy об ошибках LLM при программировании): подключается отдельно, в репозиторий не включён.
+- Наблюдения Andrej Karpathy о типичных ошибках LLM при программировании и скилл `karpathy-guidelines` ([forrestchang/andrej-karpathy-skills](https://github.com/forrestchang/andrej-karpathy-skills)): идеи легли в наш скилл `technical.simple-and-surgical`, **текст написан заново**, потому что у оригинала на странице репозитория не нашлось файла LICENSE и правообладатель не установлен. Сам оригинал указан в `recommends` набора `technical`.
 
 ## Лицензия
 MIT, см. [LICENSE](LICENSE).

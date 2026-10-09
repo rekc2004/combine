@@ -6,6 +6,14 @@
       "cost": "дёшево",
       "default": true,
       "files": ["SKILL.md"]
+    },
+    "simple-and-surgical": {
+      "cost": "дёшево",
+      "default": true,
+      "files": ["SKILL.md"]
     }
-  }
+  },
+  "recommends": [
+    { "name": "karpathy-guidelines", "note": "оригинал, из которого взяты идеи для simple-and-surgical. Репозиторий-источник: forrestchang/andrej-karpathy-skills (в шапке скилла MIT, но файла LICENSE на странице репозитория нет и правообладатель не установлен), поэтому текст не скопирован. Ставить отдельно, если нужен оригинал" }
+  ]
 }
