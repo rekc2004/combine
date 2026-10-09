@@ -1,0 +1,11 @@
+{
+  "pack": "review",
+  "title": "Ревью",
+  "skills": {
+    "quick": {
+      "cost": "дёшево",
+      "default": true,
+      "files": ["SKILL.md"]
+    }
+  }
+}

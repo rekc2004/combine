@@ -1,0 +1,11 @@
+{
+  "pack": "technical",
+  "title": "Технические проекты",
+  "skills": {
+    "verify-done": {
+      "cost": "дёшево",
+      "default": true,
+      "files": ["SKILL.md"]
+    }
+  }
+}
