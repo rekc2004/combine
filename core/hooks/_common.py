@@ -19,7 +19,7 @@ def is_user_level():
 
 def disabled_modules():
     """Отключённые модули/ключи: из .combine.json проекта и из COMBINE_DISABLE.
-    COMBINE_DISABLE=all выключает все три хука. Файл .claude/combine-off в проекте выключает
+    COMBINE_DISABLE=all выключает все хуки. Файл .claude/combine-off в проекте выключает
     Комбайн целиком (/combine off). Глобальные хуки молчат, если в проекте своя копия
     (.combine.lock): её хуки уже работают, дублировать не нужно."""
     off = set()
