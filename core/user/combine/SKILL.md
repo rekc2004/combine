@@ -30,7 +30,13 @@ Connect Combine as a **copy into the project** (needed for cloud and teams: a cl
 3. After user confirmation run it without `--dry-run`. Warn that changes to `CLAUDE.md`, `.claude/` and `.combine.*` go into commits if the user commits.
 
 ## update
-Update the global install from the source: `python <source>/tools/sync.py --user`. Show `--dry-run` first unless the user said "no questions". No `git pull` in the source unless asked. Report the new version.
+Update the whole global install to the latest **released tag**, from any project. Works from your own managed copy `~/.claude/combine/src`, not from a dev folder (the `source` in state.json may be a lab checkout whose branch is unknown).
+1. Managed copy: if `~/.claude/combine/src` is missing, `git clone https://github.com/rekc2004/combine ~/.claude/combine/src`; else `git -C ~/.claude/combine/src fetch --tags --force`. Only this repo; never other URLs.
+2. Latest tag: highest `vX.Y.Z` from `git -C ~/.claude/combine/src tag -l 'v*' --sort=-v:refname`. Installed: `python <src>/tools/sync.py --user --status`. Equal: say "up to date", stop.
+3. Show what changes: `git -C <src> diff --stat <installed tag>..<latest>` and CHANGELOG entries between them (short, owner's language). Warn the update installs hooks that run code on this machine, so the owner should read the diff (`git -C <src> diff <installed>..<latest>`).
+4. Ask for confirmation, unless the user said "no questions". Then `git -C <src> checkout <latest>` (detached tag, never a branch), `python <src>/tools/sync.py --user --dry-run`, then without `--dry-run`. Source in state.json becomes the managed copy.
+5. Report the new version and `--user --check` result. New hooks and agents load at session start; a running session may not pick them up.
+Fails or tag missing: change nothing, report.
 
 ## Never
 - Touch anything outside `~/.claude/combine`, `~/.claude/agents/combine-*`, `~/.claude/skills/combine*` and Combine's hook entries in `~/.claude/settings.json`; the installer tracks its files itself.
