@@ -27,7 +27,7 @@ STATE_FILE, LOCK_FILE = ".combine.json", ".combine.lock"
 SKILL_SUFFIXES = {".md", ".txt"}  # из наборов копируются только текстовые файлы
 DEFAULT_PACKS = ["technical", "review"]
 HOOK_MODULES = {"hook-state": "state.py", "hook-remind": "remind.py", "hook-guard": "guard.py",
-                "hook-compact": "compact.py"}
+                "hook-compact": "compact.py", "graph": "graph.py"}
 
 
 def die(msg):
@@ -140,6 +140,8 @@ def claude_block(enabled, has_skills):
             continue
         if "On context compaction" in line and "hook-compact" not in enabled:
             continue
+        if "docs/GRAPH.md" in line and "graph" not in enabled:
+            continue
         keep.append(line)
     return "\n".join(keep).strip()
 
@@ -223,7 +225,8 @@ def merge_settings(t, enabled, user=False):
     wanted = [("hook-state", "SessionStart", "startup|resume|compact|clear", "state.py"),
               ("hook-remind", "UserPromptSubmit", None, "remind.py"),
               ("hook-guard", "PreToolUse", "Bash|PowerShell", "guard.py"),
-              ("hook-compact", "PostCompact", None, "compact.py")]
+              ("hook-compact", "PostCompact", None, "compact.py"),
+              ("graph", "SessionStart", "startup|resume|compact|clear", "graph.py")]
     for module, event, matcher, script in wanted:
         if module in enabled:
             group = {"hooks": [{"type": "command", "command": hook_cmd(script, user)}]}
@@ -320,8 +323,7 @@ def main():
     if bad:
         die(f"Неизвестные модули/скиллы в --without: {', '.join(bad)}")
 
-    enabled = {m for m, v in mods.items() if v["default"]} - set(disabled)
-    enabled |= {m for m in with_ if m in mods}
+    enabled = ({m for m, v in mods.items() if v["default"]} | {m for m in with_ if m in mods}) - set(disabled)
     if args.uninstall:
         enabled, packs, with_ = set(), [], []
 
@@ -341,6 +343,9 @@ def main():
     for module, script in HOOK_MODULES.items():
         if module in enabled:
             want[f"{cm}hooks/{script}"] = read_utf8(CORE / "hooks" / script)
+    if "graph" in enabled:
+        for script in ("build.py", "query.py"):
+            want[f"{cm}graph/{script}"] = read_utf8(CORE / "graph" / script)
     if any(m in enabled for m in HOOK_MODULES):
         want[f"{cm}hooks/_common.py"] = read_utf8(CORE / "hooks" / "_common.py")
     chosen = []

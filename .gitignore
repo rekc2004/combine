@@ -2,3 +2,6 @@ __pycache__/
 *.pyc
 .env
 *.local.json
+# Code graph built by Combine itself when it is active here (docs/GRAPH-MODULE.md describes the module)
+docs/GRAPH.md
+.claude/combine/

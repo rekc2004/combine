@@ -3,7 +3,7 @@ import json
 import os
 import sys
 
-ALL_HOOKS = {"hook-state", "hook-remind", "hook-guard", "hook-compact"}
+ALL_HOOKS = {"hook-state", "hook-remind", "hook-guard", "hook-compact", "graph"}
 
 
 def project_dir():

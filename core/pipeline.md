@@ -12,6 +12,7 @@ Task state lives in `docs/TASK.md`, not in chat context. New session/compaction 
 ## Choosing a model
 Orchestrator decides by class of work, not a stage->model table:
 - Search, reading, running commands, formatting: `scout` (cheap, low effort), always.
+- Code search starts from the graph: `docs/GRAPH.md` (areas, links, main files and functions); exact questions via `python ~/.claude/combine/graph/query.py users|deps <file>`, `callers|calls|find <name>`. Read only files the graph points to. Give agents the relevant graph slice, not "search yourself". The graph is approximate: TS/JS/C calls are matched by name.
 - New logic with clear spec: `builder`.
 - Uncertainty, protocol design, threat model, contested trade-offs: `architect`.
 - Security: `security`, plus recheck of critical parts by the strongest model.
