@@ -1,0 +1,30 @@
+{
+  "pack": "triz",
+  "title": "TRIZ for AI Tasks",
+  "skills": {
+    "navigator": {
+      "cost": "cheap",
+      "about_ru": "Условный вход в ТРИЗ на всех стадиях Combine: код нужного правила и одна справка за шаг.",
+      "default": true,
+      "files": ["SKILL.md"]
+    },
+    "principles": {
+      "cost": "cheap",
+      "about_ru": "40 приёмов ТРИЗ в четырёх диапазонах: загружается только выбранный диапазон, затем 2–3 хода.",
+      "default": true,
+      "files": ["SKILL.md", "references/01-10.md", "references/11-20.md", "references/21-30.md", "references/31-40.md"]
+    },
+    "ariz": {
+      "cost": "medium",
+      "about_ru": "Поэтапный АРИЗ-85В: формулировка, ИКР, ресурсы, проверка и перенос с отдельной справкой на стадию.",
+      "default": true,
+      "files": ["SKILL.md", "references/01-frame.md", "references/02-ideal.md", "references/03-solve.md", "references/04-reframe-check.md", "references/05-apply-learn.md"]
+    },
+    "modeling": {
+      "cost": "medium",
+      "about_ru": "Модели ТРИЗ по одному коду: противоречия, развитие, веполи, причины и функции без загрузки всего набора.",
+      "default": true,
+      "files": ["SKILL.md", "references/m1-mini-task.md", "references/m2-parameters.md", "references/m3-matrix.md", "references/m4-laws.md", "references/m5-su-field.md", "references/m6-causal.md", "references/m7-function.md"]
+    }
+  }
+}

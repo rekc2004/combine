@@ -1,0 +1,23 @@
+{
+  "name": "combine",
+  "version": "0.5.0",
+  "description": "Правила, субагенты и конвейер Комбайна для Kimi Code: оркестрация сессий, состояние задачи в файлах проекта",
+  "license": "MIT",
+  "homepage": "https://github.com/rekc2004/combine",
+  "interface": {
+    "displayName": "Комбайн",
+    "shortDescription": "Правила поведения, роли субагентов и конвейер задач в каждом чате"
+  },
+  "skills": "./plugin/skills",
+  "agents": "./plugin/agents",
+  "systemPromptPath": "./plugin/SYSTEM.md",
+  "hooks": [
+    { "event": "SessionStart", "matcher": "startup|resume", "command": "python plugin/hooks/state.py", "timeout": 10 },
+    { "event": "PostCompact", "matcher": "manual|auto", "command": "python plugin/hooks/state.py", "timeout": 10 },
+    { "event": "PostCompact", "matcher": "manual|auto", "command": "python plugin/hooks/compact.py", "timeout": 10 },
+    { "event": "UserPromptSubmit", "command": "python plugin/hooks/remind.py", "timeout": 5 },
+    { "event": "PreToolUse", "matcher": "Bash", "command": "python plugin/hooks/guard.py", "timeout": 5 },
+    { "event": "SessionStart", "matcher": "startup|resume", "command": "python plugin/hooks/graph.py", "timeout": 10 },
+    { "event": "PostCompact", "matcher": "manual|auto", "command": "python plugin/hooks/graph.py", "timeout": 10 }
+  ]
+}

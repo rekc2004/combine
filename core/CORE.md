@@ -31,8 +31,9 @@ Read every session. Short on purpose. Orchestrator rules: `pipeline.md`. Draft.
 
 ## 6. Save tokens
 - Short reports. Do not retell what is in a commit, file or earlier answer. No repeats.
-- Expensive model: no repo search, no formatting. Cheap model: no architecture decisions, no cryptography, no security review. See `pipeline.md`.
+- Expensive worker: no routine repo search or formatting. Cheap worker: no architecture decisions, cryptography or security review. Host model controls are secondary; see `pipeline.md`.
 - Subagent answers short: ask for one page max.
+- Skills with references: load the router first, then only the reference named by the current gate. Never preload a whole pack.
 
 ## 7. Secure by default
 - Untrusted input (files, network, names, tokens) is hostile.

@@ -1,4 +1,5 @@
-"""SessionStart: выводит статус комбайна и docs/TASK.md (его stdout попадает в контекст)."""
+"""SessionStart: выводит статус, TASK, PROJECT, проверенные уроки и реестр инструментов."""
+import json
 import os
 import sys
 
@@ -6,6 +7,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import disabled_modules, is_user_level, project_dir, read_stdin_json  # noqa: E402
 
 MAX_CHARS = 8000
+PROJECT_MAX_CHARS = 4000
+LESSONS_MAX_CHARS = 3000
+TOOLS_MAX_CHARS = 3000
 
 
 def global_rules():
@@ -32,6 +36,34 @@ def last_compaction():
     return os.path.join(".claude", "combine", "compactions", files[-1]) if files else None
 
 
+def combine_home():
+    return os.environ.get("COMBINE_HOME") or os.path.join(os.path.expanduser("~"), ".combine")
+
+
+def lessons_path():
+    return os.path.join(combine_home(), "LESSONS.md")
+
+
+def tools_path():
+    return os.path.join(combine_home(), "TOOLS.json")
+
+
+def registered_tools():
+    try:
+        with open(tools_path(), encoding="utf-8") as f:
+            records = json.load(f).get("tools", [])
+    except (OSError, ValueError):
+        return ""
+    lines = []
+    for record in records:
+        lines.append(f"{record.get('name', '?')}: {record.get('location', '?')} | "
+                     f"{record.get('purpose', '')} | why: {record.get('why', '')} | verified: {record.get('verified', 'NOT VERIFIED')}")
+    text = "\n".join(lines)
+    if len(text) > TOOLS_MAX_CHARS:
+        text = text[:TOOLS_MAX_CHARS] + "\n...[truncated; exact lookup: registry.py find <name>]"
+    return text
+
+
 def main():
     data = read_stdin_json()
     off = disabled_modules()
@@ -53,6 +85,27 @@ def main():
         lines.append("Current task state (docs/TASK.md):\n" + text)
     except OSError:
         lines.append("docs/TASK.md missing: task not started or file not created.")
+    project = os.path.join(project_dir(), "PROJECT.md")
+    try:
+        with open(project, encoding="utf-8") as f:
+            text = f.read()
+        if len(text) > PROJECT_MAX_CHARS:
+            text = text[:PROJECT_MAX_CHARS] + "\n...[truncated, full file: PROJECT.md]"
+        lines.append("Durable project context (PROJECT.md):\n" + text)
+    except OSError:
+        lines.append("PROJECT.md missing: create from the supplied template when durable project/tool context is available; never invent paths.")
+    try:
+        with open(lessons_path(), encoding="utf-8") as f:
+            text = f.read().strip()
+        if text:
+            if len(text) > LESSONS_MAX_CHARS:
+                text = text[:LESSONS_MAX_CHARS] + "\n...[truncated, full file: LESSONS.md]"
+            lines.append("Verified reusable lessons (apply only to matching environments):\n" + text)
+    except OSError:
+        pass
+    tools = registered_tools()
+    if tools:
+        lines.append("Registered global tools (exact lookup: registry.py find <name>):\n" + tools)
     if data.get("source") == "compact":
         saved = last_compaction()
         if saved:

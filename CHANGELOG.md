@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.5.0 (2026-11-27)
+- TRIZ интегрирован в Task analysis со ступенчатой загрузкой: общий navigator, справки ARIZ/modeling/principles читаются по gate; M6 доступен как отдельная углубляющая стадия.
+- Общий pipeline отделён от Claude/Kimi capabilities. Выбор модели вторичен; TASK и platform templates доступны в обеих установках. Kimi hooks/graph собираются внутри `plugin/`, не смешиваясь с Claude-каноном.
+- Sync получил транзакционный rollback; существующий выбор packs сохраняется и сопровождается явной подсказкой opt-in для TRIZ.
+- Исправлены non-git graph freshness, release cleanup generated plugin-файлов и копирование документации; добавлена проверка skill references.
+- Kimi compact writer сообщает путь после успешной записи; обычные субагенты используются для изоляции контекста, Tower только по явному включению владельца для branch/worktree isolation.
+- Добавлен локальный корневой `PROJECT.md`: архитектурные инварианты, карта документов и проверенные пути программ/моделей с причиной использования. Создаётся один раз, пополняется без перезаписи; в release передаётся только пустой шаблон, не данные проекта.
+- Добавлены правила временных копий для сравнения вариантов и изолированных stage contexts с compact handoff вместо возврата сырых логов в главный чат.
+- Добавлена проверенная память `~/.combine/LESSONS.md` (общая для Claude/Kimi, среда/причина/правило/проверка/scope), проектные уроки и каталог reusable functions в PROJECT. Только пустые шаблоны входят в release; приватные данные и память владельца не публикуются.
+- Глубокое ревью: real release отклоняет dirty product; graph публикует JSON stamp последним после атомарного Markdown; optional TRIZ имеет fallback; PROJECT фильтруется с pipeline; Tower предупреждает о Never Ask. Добавлен `tools/self_test.py` и жёсткий `--without triz` для Claude sync и Kimi build.
+- Architect не вызывает отсутствующий TRIZ и продолжает обычный анализ. Claude `agent_file` теперь включает полный `role` из agents.json, а не только description; self-test проверяет полные роли и fallback в обоих host-вариантах.
+- Добавлен глобальный `~/.combine/TOOLS.json`: точный поиск инструментов по имени/псевдонимам и полям, атомарный upsert без перезаписи остальных, совместный lookup с PROJECT. Публичный release содержит только пустой реестр и registry.py, не данные владельца.
+
 ## 0.4.0 (2026-10-27)
 - Новый модуль `graph` (по умолчанию включён): хук SessionStart (startup, resume, compact, clear) строит в фоне граф кода проекта — `docs/GRAPH.md` для модели и `.claude/combine/graph.json` для `graph/query.py`; свежий граф — одна строка в контекст. Свой построитель на стандартной библиотеке Python (TS/JS, Python, C/C++), без MCP и сторонних пакетов. Правило «поиск по коду начинать с графа» в `pipeline.md` и `CLAUDE.md`-блоке. Выключить: `--without graph`. Описание: `docs/GRAPH-MODULE.md`.
 - `sync.py`: `--without` теперь сильнее `--with`.

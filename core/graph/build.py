@@ -247,10 +247,19 @@ def stamp(root):
             continue
         try:
             st = os.stat(os.path.join(root, path))
-            changes.append(f"{l[:2]} {path} {st.st_size} {int(st.st_mtime)}")
+            changes.append(f"{l[:2]} {path} {st.st_size} {st.st_mtime_ns}")
         except OSError:
             changes.append(f"{l[:2]} {path} gone")
-    return {"head": git("rev-parse", "HEAD"), "changes": "\n".join(changes)}
+    head = git("rev-parse", "HEAD")
+    if not head:
+        changes = []
+        for path in project_files(root):
+            try:
+                st = os.stat(os.path.join(root, path))
+                changes.append(f"{path} {st.st_size} {st.st_mtime_ns}")
+            except OSError:
+                changes.append(f"{path} gone")
+    return {"head": head, "changes": "\n".join(changes)}
 
 
 def query_path(root):
@@ -349,10 +358,20 @@ def build(root):
     jpath = os.path.join(root, ".claude", "combine", "graph.json")
     os.makedirs(os.path.dirname(jpath), exist_ok=True)
     tmp = jpath + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as h:
-        json.dump(graph, h, ensure_ascii=False)
-    os.replace(tmp, jpath)
-    write_markdown(os.path.join(root, "docs", "GRAPH.md"), root, files, fedges, syms, calls, built, st["head"])
+    mpath = os.path.join(root, "docs", "GRAPH.md")
+    tmp_md = mpath + ".tmp"
+    try:
+        with open(tmp, "w", encoding="utf-8") as h:
+            json.dump(graph, h, ensure_ascii=False)
+        write_markdown(tmp_md, root, files, fedges, syms, calls, built, st["head"])
+        os.replace(tmp_md, mpath)
+        os.replace(tmp, jpath)
+    finally:
+        for path in (tmp, tmp_md):
+            try:
+                os.remove(path)
+            except OSError:
+                pass
     print(f"graph: {len(files)} files, {len(fedges)} links, {len(syms)} definitions, {len(calls)} calls, "
           f"{time.time() - t0:.1f}s")
 

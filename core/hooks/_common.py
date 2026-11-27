@@ -39,7 +39,7 @@ def disabled_modules():
 
 
 def force_utf8():
-    """На Windows stdout по умолчанию в системной кодировке, а Claude Code читает UTF-8."""
+    """На Windows stdout по умолчанию в системной кодировке, а host хуков читает UTF-8."""
     try:
         sys.stdout.reconfigure(encoding="utf-8")
     except (AttributeError, ValueError):

@@ -1,0 +1,53 @@
+{
+  "_note": "Единственное место, где живут модели, effort и роли агентов. Вышла новая модель или поменялась роль: правите здесь и запускаете tools/sync.py (Claude: --user или --target) либо пересобираете плагин Kimi (tools/build_plugin.py). Профили — ориентир для оркестратора, не жёсткая таблица. Источники и оговорки: docs/MODELS.md. Данные на 2026-10-09, inkling добавлен 2026-11 (локальная модель владельца).",
+
+  "models": {
+    "haiku":  { "id": "claude-haiku-5-5",  "price_per_mtok": "0.10 вход / 0.50 выход (промпты до 100K)", "speed": "самая быстрая",
+                "good_for": ["поиск и чтение по репозиторию", "классификация, извлечение, суммаризация", "каркас/скелет по готовому плану", "прогон команд и разбор вывода", "узкий субагент рядом с сильной моделью"],
+                "weak_at":  ["длинный агентный кодинг", "на low effort с длинным системным промптом может остановиться раньше времени", "может отчитаться об изменении без проверки", "может пропустить нужный поиск", "по независимым данным заметно чаще выдумывает факты"],
+                "rules":    ["всегда явно требовать проверку результата (сборка/тесты)", "не давать крипто, протоколы, ревью безопасности"] },
+    "sonnet": { "id": "claude-sonnet-5-5", "price_per_mtok": "2 вход / 10 выход", "speed": "быстрая",
+                "good_for": ["основная реализация", "багфиксы", "тесты", "рефакторинг по плану", "агентный tool use", "документы, таблицы"],
+                "weak_at":  ["на max effort расходует очень много токенов и местами работает хуже, чем на xhigh", "в сложной открытой работе с устойчивым суждением слабее Opus", "в тесте поиска сложных багов нашёл заметно меньше Opus (вторичный источник)"],
+                "rules":    ["держать effort medium/high, max не использовать без причины"] },
+    "opus":   { "id": "claude-opus-5-5",   "price_per_mtok": "4 вход / 20 выход", "speed": "средняя",
+                "good_for": ["архитектура и проектирование протоколов", "модель угроз, ревью безопасности", "многочасовой автономный кодинг и большие рефакторинги", "сложная отладка"],
+                "weak_at":  ["дорого тратить на поиск и рутину", "thinking нельзя отключить", "иногда подозревает, что его проверяют"],
+                "rules":    ["по официальной рекомендации Anthropic - стартовая модель для большинства сложных задач"] },
+    "fable":  { "id": "claude-fable-5-1",  "price_per_mtok": "10 вход / 50 выход", "speed": "самая медленная",
+                "good_for": ["очень долгие агентные сессии", "deep research", "роль координатора над рабочими моделями", "когда Opus на high/xhigh не справляется"],
+                "weak_at":  ["самая дорогая и медленная", "на общем независимом индексе (Artificial Analysis) ниже Opus и Sonnet", "для пентеста/эксплойтов запросы уходят на Opus"],
+                "rules":    ["редкая, не для рутины и не для поиска"] },
+    "inkling": { "id": "thinkingmachines/inkling-2-mini (локально: llama.cpp, F:\\models\\inkling-2-mini, порт 11550)", "price_per_mtok": "0 (своя машина, офлайн)", "speed": "средняя (~10-20 ток/с на этой машине, сервис резидентный)",
+                "good_for": ["пакетное чтение и суммаризация многих файлов", "черновики: стабы каркаса, commit message, заметки к релизу", "разбор логов, триаж, классификация", "приватный код: ничего не уходит с машины", "работа без сети"],
+                "weak_at":  ["мульти-турн диалог с кучей ограничений", "архитектура, протоколы, модель угроз", "факты без источника: 26B, знает меньше больших моделей", "длинный агентный кодинг против sonnet/opus", "не видит ни репозиторий, ни чат: только то, что явно передано"],
+                "rules":    ["вызывать скриптом через скилл combine-technical-inkling, НЕ как Task-субагент", "промпт самодостаточный: весь вход передать в вызове (--file для файлов)", "результат проверяет сильная модель или главная сессия (сборка/тесты/источники)"] }
+  },
+
+  "_effort_note": "Допустимые значения: low, medium, high, xhigh, max. Anthropic: настройка effort часто важнее смены модели. Субагентам типично low. Не все модели поддерживают все уровни.",
+
+  "agents": {
+    "scout":     { "model": "haiku",  "effort": "low",    "tools": "Read, Grep, Glob, Bash",
+                   "description": "Repo search and reading, fact gathering, running check commands. Read-only, edits nothing. Use instead of strong models for any search.",
+                   "whenToUse": "Anything to find, read or verify in the repo; classify or extract information from files.",
+                   "role": "You are Combine agent `combine-scout`. Stay within your role: you search, read, run safe check commands and report facts. Never edit, create or delete files. Return a short self-contained report to the main session: what you searched, where things are, exact paths and lines. If the task needs edits or design, stop and say which agent is needed." },
+    "skeleton":  { "model": "haiku",  "effort": "medium", "tools": "Read, Grep, Glob, Edit, Write, Bash",
+                   "description": "Builds the skeleton from a ready plan: directory structure, stubs, configs, build. No complex logic. Must run the build and basic tests and report the actual result, not an assumption.",
+                   "whenToUse": "Approved plan exists and a compiling skeleton is needed: structure, stubs, configs.",
+                   "role": "You are Combine agent `combine-skeleton`. Stay within your role: build the skeleton strictly per the approved plan — structure, stubs, configs. No complex logic and no architecture decisions: anything unclear goes to the main session, do not invent. Always run the build and basic tests and report the actual output: what passed, what failed. 'Should work' without a run is unacceptable." },
+    "builder":   { "model": "sonnet", "effort": "medium", "tools": "Read, Grep, Glob, Edit, Write, Bash",
+                   "description": "Main implementation on top of the accepted skeleton, tests, refactoring. Makes no architectural decisions without a plan from architect.",
+                   "whenToUse": "Skeleton accepted, clear spec: implement logic, tests, fix bugs.",
+                   "role": "You are Combine agent `combine-builder`. Stay within your role: implement per the approved plan, write tests, fix bugs. No architecture decisions: contradiction with the plan or uncertainty goes to the main session. Never touch critical parts (network, crypto, untrusted input) yourself — hand them to combine-architect or combine-security. Run tests and report actual results: what passed, what failed." },
+    "architect": { "model": "opus",   "effort": "high",   "tools": "Read, Grep, Glob, Write",
+                   "description": "Design: architecture, protocols, threat model, decomposition into stages with agent choice. No search or routine work.",
+                   "whenToUse": "Uncertainty, protocol or architecture design, threat model, trade-offs, task decomposition.",
+                   "role": "You are Combine agent `combine-architect`. Stay within your role: design — architecture, protocols, threat model, decomposition into stages with agent choice and acceptance criteria per stage. No code and no shell commands (reading only): have combine-scout find files, or read them yourself if the path is known. Threat model is mandatory for critical parts (network, crypto, untrusted input). On a deadlock (contradiction unresolved after two iterations), if combine-triz-navigator is installed and enabled, invoke it and follow one ARIZ stage/gate at a time; never preload the full TRIZ pack. If TRIZ is off or unavailable, continue ordinary architecture and trade-off analysis in this role without calling missing skills. Return to Combine Plan once a testable direction exists. Self-contained report: decisions and why, open questions for the owner." },
+    "security":  { "model": "opus",   "effort": "high",   "tools": "Read, Grep, Glob, Bash",
+                   "description": "Security review: untrusted input, cryptography, file paths, permissions, dependencies. Read-only. Report with concrete places in the code.",
+                   "whenToUse": "Anything touching security: untrusted input, crypto, paths, permissions, dependencies, secrets.",
+                   "role": "You are Combine agent `combine-security`. Stay within your role: hunt vulnerabilities — untrusted input, cryptography, file paths, permissions, dependencies, secrets in code and logs. Never edit files. Self-contained honest report: findings with file, line and attack scenario; separately a list of what was checked and what was NOT. Never write 'secure' without checking specific places." }
+  },
+
+  "_format_note": "Claude: tools/sync.py генерирует .claude/agents/combine-*.md (frontmatter model/effort + тело role). Kimi: tools/build_plugin.py генерирует plugin/agents/*.md (frontmatter tools/whenToUse/subagents, поля model/effort Kimi игнорирует). Имена не менять: на них ссылаются CORE.md, pipeline.md и CLAUDE-блок."
+}

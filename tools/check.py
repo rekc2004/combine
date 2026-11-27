@@ -4,6 +4,7 @@
     python tools/check.py          проверить и показать таблицу
     python tools/check.py --write  заодно обновить таблицу между маркерами в README.md
 """
+import json
 import re
 import sys
 from pathlib import Path
@@ -11,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import sync  # noqa: E402
 
-COSTS = {"cheap", "medium", "expensive"}
+COSTS = {"cheap", "medium", "expensive", "дёшево", "средне", "дорого"}
 MARK_BEGIN, MARK_END = "<!-- skills-table:begin -->", "<!-- skills-table:end -->"
 SUSPICIOUS = re.compile(r"(?i)ignore (all |any )?(previous|prior) instructions|игнорируй (все )?предыдущие инструкции|curl[^\n]*\|\s*(ba)?sh")
 
@@ -28,6 +29,52 @@ def frontmatter(text):
     return out
 
 
+KNOWN_TOOLS = {"Read", "Grep", "Glob", "Edit", "Write", "Bash"}
+
+
+def check_agents(errors):
+    """Валидирует core/agents.json: единая схема моделей и ролей (Claude и Kimi читают одно место)."""
+    path = sync.CORE / "agents.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        errors.append(f"agents.json: не читается ({e})")
+        return
+    models, agents = data.get("models"), data.get("agents")
+    if not isinstance(models, dict) or not models:
+        errors.append("agents.json: нет непустого объекта models")
+        return
+    if not isinstance(agents, dict) or not agents:
+        errors.append("agents.json: нет непустого объекта agents")
+        return
+    for name, spec in agents.items():
+        key = f"агент {name}"
+        if not sync.NAME_RE.match(name):
+            errors.append(f"{key}: имя должно быть kebab-case из [a-z0-9-]")
+        if not isinstance(spec, dict):
+            errors.append(f"{key}: спецификация должна быть объектом")
+            continue
+        for field in ("description", "whenToUse", "role"):
+            if not isinstance(spec.get(field), str) or not spec[field].strip():
+                errors.append(f"{key}: обязательное строковое поле {field}")
+        desc = spec.get("description", "")
+        if "\n" in desc or len(desc) > 300:
+            errors.append(f"{key}: description одной строкой до 300 символов")
+        model = spec.get("model")
+        if model not in models:
+            errors.append(f"{key}: model {model!r} нет в models")
+        tools = spec.get("tools")
+        if not isinstance(tools, str) or not tools.strip():
+            errors.append(f"{key}: tools — непустая строка")
+        else:
+            unknown = [t for t in (x.strip() for x in tools.split(","))
+                       if t and not t.startswith("mcp__") and t not in KNOWN_TOOLS]
+            if unknown:
+                errors.append(f"{key}: неизвестные инструменты: {', '.join(unknown)}")
+        if "${" in str(spec.get("role", "")):
+            errors.append(f"{key}: role содержит ${{...}} — тело агента это шаблон, плейсхолдер сломается")
+
+
 def main():
     for stream in (sys.stdout, sys.stderr):
         try:
@@ -36,6 +83,7 @@ def main():
             pass
     write = "--write" in sys.argv
     skills, errors, rows = sync.discover_skills(), [], []
+    check_agents(errors)
     for key, s in sorted(skills.items()):
         spec = s["spec"]
         if s["cost"] not in COSTS:
@@ -54,8 +102,16 @@ def main():
             errors.append(f"{key}: description должен начинаться с маркера стоимости [{s['cost']}]")
         if "\n" in desc or len(desc) > 200:
             errors.append(f"{key}: description должно быть одной строкой до 200 символов")
+        for ref in re.findall(r"`(references/[^`]+)`", text):
+            if ref not in s["files"]:
+                errors.append(f"{key}: reference {ref!r} не перечислен в files")
         for f in s["files"]:
-            if SUSPICIOUS.search((s["base"] / f).read_text(encoding="utf-8")):
+            body = (s["base"] / f).read_text(encoding="utf-8")
+            if f.startswith("references/"):
+                for ref in re.findall(r"`([^`/\n]+\.md)`", body):
+                    if not ((s["base"] / f).parent / ref).is_file():
+                        errors.append(f"{key}/{f}: локальная ссылка не найдена: {ref}")
+            if SUSPICIOUS.search(body):
                 errors.append(f"{key}/{f}: подозрительная фраза (инъекция или запуск скачанного), проверьте вручную")
         src = spec.get("source")
         rows.append(f"| `{key}` | {s['cost']} | {'да' if s['default'] else 'нет, `--with ' + key + '`'} | "

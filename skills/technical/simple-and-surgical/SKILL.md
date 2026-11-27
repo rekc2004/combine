@@ -17,6 +17,7 @@ Use when writing, editing or refactoring code. Ideas are common to many analyses
 - Notice unrelated dead code: mention it, do not delete it.
 - Anything orphaned by YOUR edits (imports, variables, functions): remove it.
 - Test: every changed line traces to the user's request.
+- Before writing a helper, check PROJECT.md and the graph for a verified reusable function; adapt it unless the owner explicitly requires an independent implementation.
 
 ## 3. Goal with a check
 Turn the task into a verifiable criterion and repeat until it holds:
@@ -27,3 +28,6 @@ For a multi-step task, write briefly: step -> how I will verify. A weak criterio
 
 ## 4. Assumptions
 State a non-obvious assumption aloud. Several readings possible: do not pick silently, list them and ask (CORE rule).
+
+## 5. Compare without overwriting
+For competing variants, temporary copies, parallel writers, or a stage with large disposable output, read `references/work-isolation.md`. Do not load it for a straightforward edit.

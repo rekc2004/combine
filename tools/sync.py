@@ -25,7 +25,7 @@ HOOK_MARK = ".claude/combine/hooks/"
 NAME_RE = re.compile(r"^[a-z][a-z0-9-]*$")
 STATE_FILE, LOCK_FILE = ".combine.json", ".combine.lock"
 SKILL_SUFFIXES = {".md", ".txt"}  # из наборов копируются только текстовые файлы
-DEFAULT_PACKS = ["technical", "review"]
+DEFAULT_PACKS = ["technical", "review", "triz"]
 HOOK_MODULES = {"hook-state": "state.py", "hook-remind": "remind.py", "hook-guard": "guard.py",
                 "hook-compact": "compact.py", "graph": "graph.py"}
 
@@ -113,7 +113,7 @@ def agent_file(name, spec, models, core_on, rules_path=".claude/combine/CORE.md"
         die(f"Недопустимое имя агента: {name!r}")
     model = models[spec["model"]]["id"]
     rules = f"Follow {rules_path}. " if core_on else ""
-    body = (f"You are Combine agent `combine-{name}`. {rules}Stay within your role: {spec['description']}\n"
+    body = (rules + spec["role"].strip() + "\n"
             "If the task is outside your role, stop and return a short explanation to the main session "
             "of which agent is needed. Never present unverified as verified.\n")
     return ("---\n"
@@ -134,6 +134,8 @@ def claude_block(enabled, has_skills):
             continue
         if "TASK.md" in line and "pipeline" not in enabled:
             continue
+        if "PROJECT.md" in line and "pipeline" not in enabled:
+            continue
         if "combine-scout" in line and "agents" not in enabled:
             continue
         if "combine-*" in line and not has_skills:
@@ -149,6 +151,7 @@ def claude_block(enabled, has_skills):
 class Target:
     def __init__(self, root, dry):
         self.root, self.dry, self.log = root, dry, []
+        self.backups, self.created_dirs = {}, []
 
     def path(self, rel):
         p = (self.root / rel).resolve()
@@ -160,20 +163,37 @@ class Target:
         p = self.path(rel)
         return read_utf8(p) if p.exists() else None
 
+    def remember(self, rel):
+        if self.dry or rel in self.backups:
+            return
+        p = self.path(rel)
+        self.backups[rel] = p.read_bytes() if p.is_file() else None
+
+    def make_dirs(self, folder):
+        missing = []
+        while not folder.exists() and folder != self.root:
+            missing.append(folder)
+            folder = folder.parent
+        for d in reversed(missing):
+            d.mkdir()
+            self.created_dirs.append(d)
+
     def write(self, rel, text):
         p = self.path(rel)
         data = text.encode("utf-8")
         if p.exists() and p.read_bytes() == data:
             return False
+        self.remember(rel)
         self.log.append(f"+ {rel}")
         if not self.dry:
-            p.parent.mkdir(parents=True, exist_ok=True)
+            self.make_dirs(p.parent)
             p.write_bytes(data)
         return True
 
     def remove(self, rel):
         p = self.path(rel)
         if p.is_file():
+            self.remember(rel)
             self.log.append(f"- {rel}")
             if not self.dry:
                 p.unlink()
@@ -184,6 +204,26 @@ class Target:
                         parent.rmdir()
                     except OSError:
                         break
+
+    def rollback(self):
+        for rel, data in reversed(list(self.backups.items())):
+            p = self.path(rel)
+            if data is None:
+                if p.is_file():
+                    p.unlink()
+            else:
+                p.parent.mkdir(parents=True, exist_ok=True)
+                p.write_bytes(data)
+        for d in reversed(self.created_dirs):
+            try:
+                d.rmdir()
+            except OSError:
+                pass
+        self.commit()
+
+    def commit(self):
+        self.backups.clear()
+        self.created_dirs.clear()
 
 
 def merge_claude_md(t, enabled, has_skills):
@@ -303,7 +343,7 @@ def main():
         return do_check(t, lock_rel)
 
     mods = load_json(CORE / "modules.json")["modules"]
-    models = load_json(CORE / "models.json")
+    models = load_json(CORE / "agents.json")  # единая схема: модели + роли
     skills = discover_skills()
 
     prev_state = load_json(t.path(state_rel)) if t.path(state_rel).exists() else {}
@@ -311,6 +351,7 @@ def main():
     packs = csv(args.packs) if args.packs is not None else prev_state.get("packs", DEFAULT_PACKS)
     with_ = csv(args.with_) if args.with_ is not None else prev_state.get("with", [])
     disabled = csv(args.without) if args.without is not None else prev_state.get("disabled", [])
+    disabled = [d for d in disabled if d not in with_]  # явный --with отменяет прежнее --without
 
     all_packs = {d.name for d in SKILLS.iterdir() if d.is_dir()} if SKILLS.is_dir() else set()
     bad = [p for p in packs if p not in all_packs]
@@ -333,7 +374,12 @@ def main():
     if "core" in enabled:
         want[cm + "CORE.md"] = read_utf8(CORE / "CORE.md")
     if "pipeline" in enabled:
-        want[cm + "pipeline.md"] = read_utf8(CORE / "pipeline.md")
+        want[cm + "pipeline.md"] = (read_utf8(CORE / "pipeline.md").strip() + "\n\n"
+                                     + read_utf8(CORE / "platforms" / "claude.md").strip() + "\n")
+        for template in ("TASK.md", "PROJECT.md", "LESSONS.md"):
+            want[cm + "templates/" + template] = read_utf8(CORE / "templates" / template)
+        want[cm + "templates/TOOLS.json"] = read_utf8(CORE / "templates" / "TOOLS.json")
+        want[cm + "tools/registry.py"] = read_utf8(CORE / "tools" / "registry.py")
     if "agents" in enabled:
         rules_path = "~/.claude/combine/CORE.md" if user else ".claude/combine/CORE.md"
         for name, spec in models["agents"].items():
@@ -350,7 +396,8 @@ def main():
         want[f"{cm}hooks/_common.py"] = read_utf8(CORE / "hooks" / "_common.py")
     chosen = []
     for key, s in skills.items():
-        if s["pack"] in packs and key not in disabled and (s["default"] or key in with_):
+        if (s["pack"] in packs and key not in disabled and (s["pack"] != "triz" or "triz" in enabled)
+                and (s["default"] or key in with_)):
             chosen.append(key)
             for f in s["files"]:
                 want[f".claude/skills/combine-{s['pack']}-{s['name']}/{f}"] = read_utf8(s["base"] / f)
@@ -361,26 +408,33 @@ def main():
     if conflicts:
         die("Отказ: эти файлы уже есть в проекте и не принадлежат комбайну, ничего не изменено:\n  " + "\n  ".join(conflicts))
 
-    for rel, text in want.items():
-        t.write(rel, text)
-    for rel in prev_lock:
-        if rel not in want:
-            t.remove(rel)
-    if not user and "pipeline" in enabled and not t.path("docs/TASK.md").exists():
-        t.write("docs/TASK.md", read_utf8(CORE / "templates" / "TASK.md"))
-    merge_settings(t, enabled, user)
-    if not user:  # глобальная установка CLAUDE.md проектов не трогает: правила подаёт хук состояния
-        merge_claude_md(t, enabled, bool(chosen))
-    if args.uninstall:
-        t.remove(state_rel)
-        t.remove(lock_rel)
-    else:
-        state = {"version": source_version(), "packs": packs, "with": with_, "disabled": sorted(disabled)}
-        if user:
-            state["source"] = str(SRC)
-        t.write(state_rel, json.dumps(state, indent=2, ensure_ascii=False) + "\n")
-        lock = {"files": {rel: sha(text.encode("utf-8")) for rel, text in sorted(want.items())}}
-        t.write(lock_rel, json.dumps(lock, indent=2, ensure_ascii=False) + "\n")
+    try:
+        for rel, text in want.items():
+            t.write(rel, text)
+        for rel in prev_lock:
+            if rel not in want:
+                t.remove(rel)
+        if not user and "pipeline" in enabled and not t.path("docs/TASK.md").exists():
+            t.write("docs/TASK.md", read_utf8(CORE / "templates" / "TASK.md"))
+        if not user and "pipeline" in enabled and not t.path("PROJECT.md").exists():
+            t.write("PROJECT.md", read_utf8(CORE / "templates" / "PROJECT.md"))
+        merge_settings(t, enabled, user)
+        if not user:  # глобальная установка CLAUDE.md проектов не трогает: правила подаёт хук состояния
+            merge_claude_md(t, enabled, bool(chosen))
+        if args.uninstall:
+            t.remove(state_rel)
+            t.remove(lock_rel)
+        else:
+            state = {"version": source_version(), "packs": packs, "with": with_, "disabled": sorted(disabled)}
+            if user:
+                state["source"] = str(SRC)
+            t.write(state_rel, json.dumps(state, indent=2, ensure_ascii=False) + "\n")
+            lock = {"files": {rel: sha(text.encode("utf-8")) for rel, text in sorted(want.items())}}
+            t.write(lock_rel, json.dumps(lock, indent=2, ensure_ascii=False) + "\n")
+    except BaseException:
+        t.rollback()
+        raise
+    t.commit()
 
     v = source_version()
     print(("[dry-run] " if args.dry_run else "") + ("Удаление: " if args.uninstall else "") + f"Комбайн {v['describe']}{' (есть незакоммиченные правки!)' if v['dirty'] else ''} -> {root}{' (глобально)' if user else ''}")
@@ -388,6 +442,9 @@ def main():
     print("Скиллы:", ", ".join(chosen) or "нет", "| наборы:", ", ".join(packs) or "нет")
     print("Отключено:", ", ".join(sorted(disabled)) or "ничего")
     print("\n".join(t.log) or "Изменений нет.")
+    if "triz" not in packs and not args.uninstall:
+        print("TRIZ не включён; пользовательский выбор packs сохранён. Для включения перезапустите с --packs "
+              + ",".join(packs + ["triz"]))
     for pack in packs:  # напоминание о внешних скиллах: не ставим и не проверяем, только подсказываем
         manifest = SKILLS / pack / "pack.json"
         rec = load_json(manifest).get("recommends", []) if manifest.exists() else []

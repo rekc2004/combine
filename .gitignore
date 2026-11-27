@@ -5,3 +5,4 @@ __pycache__/
 # Code graph built by Combine itself when it is active here (docs/GRAPH-MODULE.md describes the module)
 docs/GRAPH.md
 .claude/combine/
+dist/
